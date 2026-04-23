@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mariadb:10.5
+    container_name: koha-mariadb
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_DATABASE: koha
+      MYSQL_USER: koha
+      MYSQL_PASSWORD: koha
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    container_name: koha-es
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+
+  koha:
+    image: digibib/koha:latest
+    container_name: koha
+    depends_on:
+      db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+    environment:
+      DB_HOST: db
+      DB_NAME: koha
+      DB_USER: koha
+      DB_PASS: koha
+      KOHA_INSTANCE: library
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "6001:6001"
+    volumes:
+      - koha_data:/var/lib/koha
+
+volumes:
+  db_data:
+  koha_data:
